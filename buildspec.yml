@@ -23,12 +23,9 @@ phases:
   pre_build:
     commands:
       - echo Logging in to Amazon ECR...
-      # Correct login command (no $())
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
-      # Create the ECR repository if it does not exist
-      - |
-        aws ecr describe-repositories --repository-names $REPOSITORY_NAME --region $AWS_DEFAULT_REGION || \
-        aws ecr create-repository --repository-name $REPOSITORY_NAME --region $AWS_DEFAULT_REGION
+      # Ensure the ECR repository exists
+      - aws ecr describe-repositories --repository-names $REPOSITORY_NAME --region $AWS_DEFAULT_REGION || aws ecr create-repository --repository-name $REPOSITORY_NAME --region $AWS_DEFAULT_REGION
       - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$REPOSITORY_NAME
 
   build:
