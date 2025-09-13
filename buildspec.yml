@@ -10,16 +10,25 @@ env:
     IMAGE_TAG: "latest"
 
 phases:
+  install:
+    runtime-versions:
+      docker: 20
+    commands:
+      - echo Installing dependencies...
+      - echo Docker version:
+      - docker --version
+      - echo AWS CLI version:
+      - aws --version
+
   pre_build:
     commands:
       - echo Logging in to Amazon ECR...
-      # Ensure AWS CLI v2 is installed and Docker is available
-      - echo "Checking AWS CLI version..."
-      - aws --version
-      - echo "Checking Docker version..."
-      - docker --version
-      # Perform login
-      - $(aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com)
+      # Correct login command (no $())
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      # Create the ECR repository if it does not exist
+      - |
+        aws ecr describe-repositories --repository-names $REPOSITORY_NAME --region $AWS_DEFAULT_REGION || \
+        aws ecr create-repository --repository-name $REPOSITORY_NAME --region $AWS_DEFAULT_REGION
       - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$REPOSITORY_NAME
 
   build:
@@ -32,9 +41,9 @@ phases:
   post_build:
     commands:
       - echo Build completed on `date`
-      - echo Pushing the Docker image...
+      - echo Pushing the Docker image to ECR...
       - docker push $REPOSITORY_URI:$IMAGE_TAG
-      - echo Writing image definitions file...
+      - echo Writing imagedefinitions.json...
       - printf '[{"name":"%s","imageUri":"%s"}]' $CONTAINER_NAME $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
 
 artifacts:
